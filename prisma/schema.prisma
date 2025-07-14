@@ -34,6 +34,7 @@ model Doctor {
   designation  String?  // Optional
   specialty   String
   topic        String
+  files        Json?    // Array of file names
   filepath String? @db.Text // This ensures it becomes a TEXT column
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

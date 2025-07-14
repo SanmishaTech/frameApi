@@ -13,6 +13,7 @@ const {
   fetchDoctorRecord,
   uploadDoctorVideo,
   DeleteDoctorVideo,
+  finishDoctorVideo,
 } = require("../controllers/doctorController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -177,6 +178,37 @@ router.get("/", auth, acl("doctors.read"), getDoctors);
  *         description: Failed to create doctor
  */
 router.post("/", auth, acl("doctors.write"), createDoctor);
+
+/**
+ * @swagger
+ * /api/doctors/record/{uuid}/finish:
+ *   post:
+ *     summary: Finalize the video upload for a doctor
+ *     tags: [Doctors]
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: UUID of the doctor
+ *     responses:
+ *       200:
+ *         description: Video upload finalized successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Video upload completed
+ *       404:
+ *         description: Doctor not found
+ *       500:
+ *         description: Failed to finalize video upload
+ */
+router.post("/record/:uuid/finish", finishDoctorVideo);
 
 /**
  * @swagger
