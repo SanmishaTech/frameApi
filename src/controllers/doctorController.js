@@ -8,6 +8,8 @@ const config = require("../config/config");
 const { exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
+
+
 // Get all doctors with pagination, sorting, and search
 const getDoctors = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;

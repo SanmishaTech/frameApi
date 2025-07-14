@@ -1,4 +1,6 @@
 const express = require("express");
+const multer = require("multer");
+
 const router = express.Router();
 const {
   getDoctors,
@@ -15,6 +17,19 @@ const {
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
 const upload = require("../middleware/VideoUploadMiddleware");
+
+// Custom middleware wrapper to handle multer errors
+const handleMulterErrors = (req, res, next) => {
+  upload.single("video")(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: err.message });
+    } else if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    next();
+  });
+};
+
 /**
  * @swagger
  * tags:
@@ -194,7 +209,7 @@ router.post("/", auth, acl("doctors.write"), createDoctor);
  *       500:
  *         description: Failed to upload video chunk
  */
-router.post("/record/:uuid", upload.single("video"), uploadDoctorVideo);
+router.post("/record/:uuid", handleMulterErrors, uploadDoctorVideo);
 
 /**
  * @swagger
