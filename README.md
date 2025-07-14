@@ -1,4 +1,4 @@
-# BrindaApi
+# FrameApi
 
 A simple Node.js REST API project built with Express, Prisma, and JWT.
 
