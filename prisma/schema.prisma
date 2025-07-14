@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int       @id @default(autoincrement())
+  name               String
+  email              String    @unique
+  mobile             String?     
+  password           String
+  role               String
+  active             Boolean   @default(true)
+  lastLogin          DateTime?
+  resetToken         String?   
+  resetTokenExpires  DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  @@map("users")
+}
+
+
+model Doctor {
+  id           Int      @id @default(autoincrement())
+  uuid         String   @unique
+  name         String
+  mobile       String
+  email        String   @unique
+  degree       String
+  designation  String?  // Optional
+  specialty   String
+  topic        String
+  filepath String? @db.Text // This ensures it becomes a TEXT column
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  uploadedAt    DateTime?
+
+  @@map("doctors")
+}
+
+
+
+
+
+
+
+
