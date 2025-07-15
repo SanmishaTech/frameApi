@@ -439,69 +439,7 @@ const uploadDoctorVideo = async (req, res) => {
 // const finishDoctorVideo = async (req, res) => {
 //   try {
 //     const { uuid } = req.params;
-
-//     const doctor = await prisma.doctor.findUnique({ where: { uuid } });
-//     if (!doctor || !doctor.files || doctor.files.length === 0) {
-//       return res
-//         .status(404)
-//         .json({ message: "No video chunks found for merging" });
-//     }
-
-//     const outputFileName = `${uuid}-merged-video.mp4`;
-//     const outputFilePath = path.resolve(
-//       __dirname,
-//       "../../uploads",
-//       outputFileName
-//     );
-
-//     // Use ffmpeg to merge and re-encode video chunks
-//     const inputFiles = doctor.files.map((file) =>
-//       path.resolve(__dirname, "../../uploads", file)
-//     );
-
-//     const fileListPath = path.resolve(
-//       __dirname,
-//       "../../uploads",
-//       `${uuid}-file-list.txt`
-//     );
-//     fs.writeFileSync(
-//       fileListPath,
-//       inputFiles.map((file) => `file '${file}'`).join("\n")
-//     );
-
-//     // Re-encode all chunks to ensure compatibility
-//     const command = `ffmpeg -f concat -safe 0 -i "${fileListPath}" -vf "scale=640:480" -c:v libx264 -preset fast -crf 23 -c:a aac -strict experimental "${outputFilePath}"`;
-
-//     exec(command, async (error) => {
-//       if (error) {
-//         console.error("Merge error:", error);
-//         return res
-//           .status(500)
-//           .json({ message: "Merge failed", details: error.message });
-//       }
-
-//       // Update the doctor record with the merged file path
-//       await prisma.doctor.update({
-//         where: { uuid },
-//         data: {
-//           filepath: outputFileName,
-//           files: null, // Clear the files array after merging
-//         },
-//       });
-
-//       // Clean up temporary file list
-//       fs.unlinkSync(fileListPath);
-
-//       res.json({ message: "Video merged successfully", file: outputFileName });
-//     });
-//   } catch (error) {
-//     console.error("Merge error:", error);
-//     res.status(500).json({ message: "Merge failed", details: error.message });
-//   }
-// };
-// const finishDoctorVideo = async (req, res) => {
-//   try {
-//     const { uuid } = req.params;
+//     const { orientation = "portrait" } = req.body; // "portrait" or "landscape"
 
 //     const doctor = await prisma.doctor.findUnique({ where: { uuid } });
 //     if (!doctor || !doctor.files || doctor.files.length === 0) {
@@ -515,56 +453,94 @@ const uploadDoctorVideo = async (req, res) => {
 //     const mergedWebmPath = path.resolve(chunksDir, `${uuid}-merged.webm`);
 //     const finalMp4Path = path.resolve(chunksDir, `${uuid}-merged.mp4`);
 
-//     // Create a file list for ffmpeg
+//     const existingChunks = doctor.files
+//       .map((file) => path.resolve(chunksDir, file))
+//       .filter((filePath) => fs.existsSync(filePath));
+
+//     if (existingChunks.length === 0) {
+//       return res.status(404).json({
+//         message: "No valid chunks found on disk to merge",
+//       });
+//     }
+
+//     existingChunks.sort();
+
+//     // Write concat list file
 //     fs.writeFileSync(
 //       fileListPath,
-//       doctor.files
-//         .map((file) => `file '${path.resolve(chunksDir, file)}'`)
-//         .join("\n")
+//       existingChunks.map((file) => `file '${file}'`).join("\n")
 //     );
 
-//     // Step 1: Merge .webm chunks into one .webm file
+//     // Merge chunks
 //     const mergeCommand = `ffmpeg -f concat -safe 0 -i "${fileListPath}" -c copy "${mergedWebmPath}"`;
 
 //     exec(mergeCommand, (mergeError) => {
 //       if (mergeError) {
-//         console.error("Merge error:", mergeError);
 //         return res
 //           .status(500)
 //           .json({ message: "Merge failed", details: mergeError.message });
 //       }
 
-//       // Step 2: Convert merged.webm to final mp4
-//       const convertCommand = `ffmpeg -i "${mergedWebmPath}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
+//       const nameText = `Dr. ${doctor?.name || "Unknown"}, ${
+//         doctor?.degree || "Unknown"
+//       }`;
+//       const topicText = `Topic: ${doctor?.topic || "Unknown"}`;
+//       const escape = (text) =>
+//         text.replace(/'/g, "\\'").replace(/:/g, "\\:").replace(/,/g, "\\,");
+
+//       // 📐 Choose video size & text positions by orientation
+//       const isPortrait = orientation === "portrait";
+
+//       const videoWidth = isPortrait ? 720 : 1280;
+//       const videoHeight = isPortrait ? 1280 : 720;
+
+//       const textBoxHeight = isPortrait ? 90 : 60;
+
+//       const topicY = isPortrait ? 55 : 35; // Topic text closer to bottom
+//       const nameY = topicY + 35; // Doctor name text a bit higher
+
+//       const ffmpegFilter = [
+//         // `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
+//         // `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
+//         // `drawbox=x=0:y=0:w=iw:h=ih:color=orange@1.0:t=20`,
+//         // `drawbox=x=0:y=ih-${textBoxHeight + 15}:w=iw:h=${
+//         //   textBoxHeight + 15
+//         // }:color=black@0.6:t=fill`,
+//         `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
+//           nameText
+//         )}':fontcolor=white:fontsize=24:x=(w-text_w)/2:y=h-${nameY}:shadowcolor=black:shadowx=2:shadowy=2`,
+//         `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
+//           topicText
+//         )}':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=h-${topicY}:shadowcolor=black:shadowx=2:shadowy=2`,
+//       ].join(",");
+
+//       const convertCommand = `ffmpeg -i "${mergedWebmPath}" -vf "${ffmpegFilter}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
 
 //       exec(convertCommand, async (convertError) => {
 //         if (convertError) {
-//           console.error("Conversion error:", convertError);
 //           return res.status(500).json({
 //             message: "Conversion failed",
 //             details: convertError.message,
 //           });
 //         }
 
-//         // Update DB and clean up
 //         await prisma.doctor.update({
 //           where: { uuid },
 //           data: {
 //             filepath: path.basename(finalMp4Path),
-//             files: null,
+//             files: [],
+//             uploadedAt: new Date(),
 //           },
 //         });
 
-//         // Clean up
 //         fs.unlinkSync(fileListPath);
 //         fs.unlinkSync(mergedWebmPath);
-//         doctor.files.forEach((file) => {
-//           const chunkPath = path.resolve(chunksDir, file);
-//           if (fs.existsSync(chunkPath)) fs.unlinkSync(chunkPath);
+//         existingChunks.forEach((file) => {
+//           if (fs.existsSync(file)) fs.unlinkSync(file);
 //         });
 
 //         res.json({
-//           message: "Video merged and converted successfully",
+//           message: `Video merged and converted successfully (${orientation})`,
 //           file: path.basename(finalMp4Path),
 //         });
 //       });
@@ -574,10 +550,11 @@ const uploadDoctorVideo = async (req, res) => {
 //     res.status(500).json({ message: "Merge failed", details: error.message });
 //   }
 // };
+
 const finishDoctorVideo = async (req, res) => {
   try {
     const { uuid } = req.params;
-    const { orientation = "portrait" } = req.body; // "portrait" or "landscape"
+    const { orientation = "portrait" } = req.body;
 
     const doctor = await prisma.doctor.findUnique({ where: { uuid } });
     if (!doctor || !doctor.files || doctor.files.length === 0) {
@@ -592,100 +569,100 @@ const finishDoctorVideo = async (req, res) => {
     const finalMp4Path = path.resolve(chunksDir, `${uuid}-merged.mp4`);
 
     const existingChunks = doctor.files
-      .map((file) => path.resolve(chunksDir, file))
+      .map((file) => path.resolve(chunksDir, path.basename(file))) // Ensure safe filenames
       .filter((filePath) => fs.existsSync(filePath));
 
     if (existingChunks.length === 0) {
-      return res.status(404).json({
-        message: "No valid chunks found on disk to merge",
-      });
+      return res
+        .status(404)
+        .json({ message: "No valid chunks found on disk to merge" });
     }
 
-    existingChunks.sort();
+    existingChunks.sort(); // Ensure correct chunk order
 
-    // Write concat list file
+    // Write list file for ffmpeg
     fs.writeFileSync(
       fileListPath,
       existingChunks.map((file) => `file '${file}'`).join("\n")
     );
 
-    // Merge chunks
-    const mergeCommand = `ffmpeg -f concat -safe 0 -i "${fileListPath}" -c copy "${mergedWebmPath}"`;
-
-    exec(mergeCommand, (mergeError) => {
-      if (mergeError) {
-        return res
-          .status(500)
-          .json({ message: "Merge failed", details: mergeError.message });
-      }
-
-      const nameText = `Dr. ${doctor?.name || "Unknown"}, ${
-        doctor?.degree || "Unknown"
-      }`;
-      const topicText = `Topic: ${doctor?.topic || "Unknown"}`;
-      const escape = (text) =>
-        text.replace(/'/g, "\\'").replace(/:/g, "\\:").replace(/,/g, "\\,");
-
-      // 📐 Choose video size & text positions by orientation
-      const isPortrait = orientation === "portrait";
-
-      const videoWidth = isPortrait ? 720 : 1280;
-      const videoHeight = isPortrait ? 1280 : 720;
-
-      const textBoxHeight = isPortrait ? 90 : 60;
-
-      const topicY = isPortrait ? 55 : 35; // Topic text closer to bottom
-      const nameY = topicY + 35; // Doctor name text a bit higher
-
-      const ffmpegFilter = [
-        // `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
-        // `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
-        // `drawbox=x=0:y=0:w=iw:h=ih:color=orange@1.0:t=20`,
-        // `drawbox=x=0:y=ih-${textBoxHeight + 15}:w=iw:h=${
-        //   textBoxHeight + 15
-        // }:color=black@0.6:t=fill`,
-        `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
-          nameText
-        )}':fontcolor=white:fontsize=24:x=(w-text_w)/2:y=h-${nameY}:shadowcolor=black:shadowx=2:shadowy=2`,
-        `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
-          topicText
-        )}':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=h-${topicY}:shadowcolor=black:shadowx=2:shadowy=2`,
-      ].join(",");
-
-      const convertCommand = `ffmpeg -i "${mergedWebmPath}" -vf "${ffmpegFilter}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
-
-      exec(convertCommand, async (convertError) => {
-        if (convertError) {
-          return res.status(500).json({
-            message: "Conversion failed",
-            details: convertError.message,
-          });
-        }
-
-        await prisma.doctor.update({
-          where: { uuid },
-          data: {
-            filepath: path.basename(finalMp4Path),
-            files: [],
-            uploadedAt: new Date(),
-          },
-        });
-
-        fs.unlinkSync(fileListPath);
-        fs.unlinkSync(mergedWebmPath);
-        existingChunks.forEach((file) => {
-          if (fs.existsSync(file)) fs.unlinkSync(file);
-        });
-
-        res.json({
-          message: `Video merged and converted successfully (${orientation})`,
-          file: path.basename(finalMp4Path),
-        });
+    // Merge .webm files
+    await new Promise((resolve, reject) => {
+      const mergeCommand = `ffmpeg -f concat -safe 0 -i "${fileListPath}" -c copy "${mergedWebmPath}"`;
+      exec(mergeCommand, (err) => {
+        if (err) reject(new Error(`Merge failed: ${err.message}`));
+        else resolve();
       });
+    });
+
+    // Prepare text overlay
+    const nameText = `Dr. ${doctor?.name || "Unknown"}, ${
+      doctor?.degree || "Unknown"
+    }`;
+    const topicText = `Topic: ${doctor?.topic || "Unknown"}`;
+    const escape = (text) =>
+      text.replace(/'/g, "\\'").replace(/:/g, "\\:").replace(/,/g, "\\,");
+
+    const isPortrait = orientation === "portrait";
+    const videoWidth = isPortrait ? 720 : 1280;
+    const videoHeight = isPortrait ? 1280 : 720;
+    const textBoxHeight = isPortrait ? 90 : 60;
+
+    const topicY = isPortrait ? 55 : 35;
+    const nameY = topicY + 35;
+
+    const ffmpegFilter = [
+      `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
+      `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
+      `drawbox=x=0:y=0:w=iw:h=ih:color=orange@1.0:t=20`,
+      `drawbox=x=0:y=0:w=iw:h=ih:color=orange@1.0:t=20`,
+
+      `drawbox=x=0:y=ih-${textBoxHeight + 15}:w=iw:h=${
+        textBoxHeight + 15
+      }:color=black@0.6:t=fill`,
+      `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
+        nameText
+      )}':fontcolor=white:fontsize=24:x=(w-text_w)/2:y=h-${nameY}:shadowcolor=black:shadowx=2:shadowy=2`,
+      `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
+        topicText
+      )}':fontcolor=white:fontsize=28:x=(w-text_w)/2:y=h-${topicY}:shadowcolor=black:shadowx=2:shadowy=2`,
+    ].join(",");
+
+    // Convert and add overlay
+    await new Promise((resolve, reject) => {
+      const convertCommand = `ffmpeg -i "${mergedWebmPath}" -vf "${ffmpegFilter}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
+      exec(convertCommand, (err) => {
+        if (err) reject(new Error(`Conversion failed: ${err.message}`));
+        else resolve();
+      });
+    });
+
+    // Update DB
+    await prisma.doctor.update({
+      where: { uuid },
+      data: {
+        filepath: path.basename(finalMp4Path),
+        files: [],
+        uploadedAt: new Date(),
+      },
+    });
+
+    // Cleanup
+    fs.unlinkSync(fileListPath);
+    fs.unlinkSync(mergedWebmPath);
+    existingChunks.forEach(
+      (file) => fs.existsSync(file) && fs.unlinkSync(file)
+    );
+
+    return res.json({
+      message: `Video merged and converted successfully (${orientation})`,
+      file: path.basename(finalMp4Path),
     });
   } catch (error) {
     console.error("Finish error:", error);
-    res.status(500).json({ message: "Merge failed", details: error.message });
+    return res
+      .status(500)
+      .json({ message: "Merge failed", details: error.message });
   }
 };
 
