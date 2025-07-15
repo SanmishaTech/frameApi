@@ -26,6 +26,7 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
   })
 );
+// app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For application/x-www-form-urlencoded (optional, but common)
 const uploadsPath = path.join(__dirname, "..", "uploads");
