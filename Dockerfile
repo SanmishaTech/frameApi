@@ -10,18 +10,17 @@ RUN npm install
 # Copy source files
 COPY . .
 
-# Build the app (if using TypeScript)
-# RUN if [ -f tsconfig.json ]; then npm run build; fi
-
 # Production image
 FROM node:18-slim
 
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apt-get update -y && apt-get install -y openssl
+
 # Copy only necessary files from builder
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
-# COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/.env ./
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/prisma ./prisma
