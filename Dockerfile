@@ -30,4 +30,4 @@ COPY --from=builder /app/server.js ./
 EXPOSE 3000
 
 # Start the app with migration
-CMD npx prisma migrate deploy && npm start
+CMD npx prisma migrate dev --name init && npx prisma generate && npm run seed && npm start
