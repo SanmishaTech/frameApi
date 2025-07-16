@@ -19,14 +19,14 @@ app.use(
     crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resource loading
   })
 );
-// app.use(
-//   cors({
-//     origin: config.frontendUrl || "http://localhost:5173", // Allow requests from this origin
-//     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
-//     allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
-//   })
-// );
-app.use(cors());
+app.use(
+  cors({
+    origin: config.frontendUrl || "http://localhost:5173", // Allow requests from this origin
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // Allowed HTTP methods
+    allowedHeaders: ["Content-Type", "Authorization"], // Allowed headers
+  })
+);
+// app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // For application/x-www-form-urlencoded (optional, but common)
 const uploadsPath = path.join(__dirname, "..", "uploads");
