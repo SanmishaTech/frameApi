@@ -1,19 +1,31 @@
-FROM node:14
+# Use official Node.js image as build stage
+FROM node:18 AS builder
 
-# Set the working directory
-WORKDIR /usr/src/app
-
-# Copy package.json and package-lock.json
-COPY package*.json ./
+WORKDIR /app
 
 # Install dependencies
+COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the application files
+# Copy source files
 COPY . .
 
-# Expose the application port
+# Build the app (if using TypeScript)
+RUN if [ -f tsconfig.json ]; then npm run build; fi
+
+# Production image
+FROM node:18-slim
+
+WORKDIR /app
+
+# Copy only necessary files from builder
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/.env ./
+
+# Expose port (match your .env PORT)
 EXPOSE 3000
 
-# Command to run the application
-CMD ["npm", "start"]
+# Start the app with migration
+CMD npx prisma migrate deploy && npm start
