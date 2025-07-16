@@ -11,7 +11,7 @@ RUN npm install
 COPY . .
 
 # Build the app (if using TypeScript)
-RUN if [ -f tsconfig.json ]; then npm run build; fi
+# RUN if [ -f tsconfig.json ]; then npm run build; fi
 
 # Production image
 FROM node:18-slim
