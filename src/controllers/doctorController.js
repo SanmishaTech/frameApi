@@ -402,7 +402,7 @@ const DeleteDoctorVideo = async (req, res) => {
 };
 
 const testData = async (req, res) => {
-  const dirPath = path.resolve(__dirname, "/data/frame");
+  const dirPath = path.resolve(__dirname, "/uploads");
   const readmePath = path.join(dirPath, "readme.txt");
   const content = "This folder stores doctor video files and related data.";
 
