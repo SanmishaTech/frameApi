@@ -15,9 +15,8 @@ FROM node:18-slim
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma
+# Install OpenSSL for Prisma and ffmpeg
 RUN apt-get update -y && apt-get install -y openssl ffmpeg
-
 
 # Copy only necessary files from builder
 COPY --from=builder /app/package*.json ./
