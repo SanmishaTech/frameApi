@@ -14,6 +14,7 @@ const {
   uploadDoctorVideo,
   DeleteDoctorVideo,
   finishDoctorVideo,
+  testData
 } = require("../controllers/doctorController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -47,6 +48,8 @@ const handleMulterErrors = (req, res, next) => {
  *       scheme: bearer
  *       bearerFormat: JWT
  */
+
+router.get("/test", testData);
 
 /**
  * @swagger

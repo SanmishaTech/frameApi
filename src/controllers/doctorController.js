@@ -401,6 +401,23 @@ const DeleteDoctorVideo = async (req, res) => {
   }
 };
 
+const testData = async (req, res) => {
+  const dirPath = path.resolve(__dirname, "/data/frame");
+  const readmePath = path.join(dirPath, "readme.txt");
+  const content = "This folder stores doctor video files and related data.";
+
+  try {
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    fs.writeFileSync(readmePath, content, "utf8");
+    res.status(200).json({ message: "readme.txt created successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create readme.txt", details: error.message });
+  }
+}
+
+
 const uploadDoctorVideo = async (req, res) => {
   try {
     const { uuid } = req.params;
@@ -565,4 +582,5 @@ module.exports = {
   DeleteDoctorVideo,
   uploadDoctorVideo,
   finishDoctorVideo,
+  testData,
 };
