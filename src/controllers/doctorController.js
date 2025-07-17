@@ -267,7 +267,7 @@ const deleteDoctor = async (req, res) => {
     if (doctor.filepath) {
       const filepath = path.resolve(
         __dirname,
-        "/data/frame",
+        "/uploads",
         doctor.filepath.trim()
       );
       if (fs.existsSync(filepath)) {
@@ -372,7 +372,7 @@ const DeleteDoctorVideo = async (req, res) => {
     if (doctor.filepath) {
       const filepath = path.resolve(
         __dirname,
-        "/data/frame",
+        "/uploads",
         doctor.filepath.trim()
       );
       console.log("Deleting file:", filepath);
@@ -429,7 +429,7 @@ const uploadDoctorVideo = async (req, res) => {
 
     const uploadedFilePath = path.resolve(
       __dirname,
-      "/data/frame",
+      "/uploads",
       req.file.filename
     );
 
@@ -466,7 +466,7 @@ const finishDoctorVideo = async (req, res) => {
         .json({ message: "No video chunks found for merging" });
     }
 
-    const chunksDir = path.resolve(__dirname, "/data/frame");
+    const chunksDir = path.resolve(__dirname, "/uploads");
     const fileListPath = path.resolve(chunksDir, `${uuid}-file-list.txt`);
     // We no longer need mergedWebmPath
     // const mergedWebmPath = path.resolve(chunksDir, `${uuid}-merged.webm`);
