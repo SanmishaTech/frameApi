@@ -63,50 +63,21 @@ const getDoctors = async (req, res, next) => {
 
 // Create a new doctor
 const createDoctor = async (req, res) => {
-  const schema = z
-    .object({
-      name: z
-        .string()
-        .min(1, "Name cannot be left blank.")
-        .max(100, "Name must not exceed 100 characters.")
-        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-          message: "Name can only contain letters.",
-        }),
-      mobile: z.string().min(1, "Mobile cannot be left blank."),
-      email: z.string().email("Invalid email format."),
-      degree: z.string().min(1, "Degree cannot be left blank."),
-      designation: z.string().optional(),
-      specialty: z.string().min(1, "Specialty cannot be left blank."),
-      topic: z.string().min(1, "Topic cannot be left blank."),
-    })
-    .superRefine(async (data, ctx) => {
-      const existingDoctor = await prisma.doctor.findFirst({
-        where: {
-          email: data.email,
-        },
-      });
-
-      const existingDoctorMobile = await prisma.doctor.findFirst({
-        where: {
-          mobile: data.mobile,
-        },
-      });
-
-      if (existingDoctor) {
-        ctx.addIssue({
-          path: ["email"],
-          message: `Doctor with email ${data.email} already exists.`,
-        });
-      }
-
-      if (existingDoctorMobile) {
-        ctx.addIssue({
-          path: ["mobile"],
-          message: `Doctor with mobile ${data.mobile} already exists.`,
-        });
-      }
-    });
-
+  const schema = z.object({
+    name: z
+      .string()
+      .min(1, "Name cannot be left blank.")
+      .max(100, "Name must not exceed 100 characters.")
+      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+        message: "Name can only contain letters.",
+      }),
+    mobile: z.string().min(1, "Mobile cannot be left blank."),
+    email: z.string().email("Invalid email format."),
+    degree: z.string().min(1, "Degree cannot be left blank."),
+    designation: z.string().optional(),
+    specialty: z.string().min(1, "Specialty cannot be left blank."),
+    topic: z.string().min(1, "Topic cannot be left blank."),
+  });
   const validationErrors = await validateRequest(schema, req.body, res);
 
   const { name, mobile, email, degree, designation, specialty, topic } =
@@ -161,54 +132,21 @@ const getDoctorById = async (req, res) => {
 
 // Update doctor by ID
 const updateDoctor = async (req, res) => {
-  const schema = z
-    .object({
-      name: z
-        .string()
-        .min(1, "Name cannot be left blank.")
-        .max(100, "Name must not exceed 100 characters.")
-        .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-          message: "Name can only contain letters.",
-        }),
-      mobile: z.string().min(1, "Mobile cannot be left blank."),
-      email: z.string().email("Invalid email format."),
-      degree: z.string().min(1, "Degree cannot be left blank."),
-      designation: z.string().optional(),
-      specialty: z.string().min(1, "Specialty cannot be left blank."),
-      topic: z.string().min(1, "Topic cannot be left blank."),
-    })
-    .superRefine(async (data, ctx) => {
-      const { id } = req.params;
-
-      const existingDoctor = await prisma.doctor.findFirst({
-        where: {
-          email: data.email,
-        },
-        select: { id: true },
-      });
-
-      const existingDoctorMobile = await prisma.doctor.findFirst({
-        where: {
-          mobile: data.mobile,
-        },
-        select: { id: true },
-      });
-
-      if (existingDoctor && existingDoctor.id !== parseInt(id)) {
-        ctx.addIssue({
-          path: ["email"],
-          message: `Doctor with email ${data.email} already exists.`,
-        });
-      }
-
-      if (existingDoctorMobile && existingDoctorMobile.id !== parseInt(id)) {
-        ctx.addIssue({
-          path: ["mobile"],
-          message: `Doctor with mobile ${data.mobile} already exists.`,
-        });
-      }
-    });
-
+  const schema = z.object({
+    name: z
+      .string()
+      .min(1, "Name cannot be left blank.")
+      .max(100, "Name must not exceed 100 characters.")
+      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
+        message: "Name can only contain letters.",
+      }),
+    mobile: z.string().min(1, "Mobile cannot be left blank."),
+    email: z.string().email("Invalid email format."),
+    degree: z.string().min(1, "Degree cannot be left blank."),
+    designation: z.string().optional(),
+    specialty: z.string().min(1, "Specialty cannot be left blank."),
+    topic: z.string().min(1, "Topic cannot be left blank."),
+  });
   const validationErrors = await validateRequest(schema, req.body, res);
 
   const { id } = req.params;

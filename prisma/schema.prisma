@@ -29,17 +29,16 @@ model Doctor {
   uuid         String   @unique
   name         String
   mobile       String
-  email        String   @unique
+  email        String 
   degree       String
   designation  String?  // Optional
   specialty   String
-  topic        String
+  topic        String @db.Text
   files        Json?    // Array of file names
   filepath String? @db.Text // This ensures it becomes a TEXT column
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   uploadedAt    DateTime?
-
   @@map("doctors")
 }
 
