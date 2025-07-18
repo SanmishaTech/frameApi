@@ -263,16 +263,15 @@ const deleteDoctor = async (req, res) => {
       });
     }
 
-    // If a file path exists, delete the file
-    if (doctor.filepath) {
-      const filepath = path.resolve(
-        __dirname,
-        "/uploads",
-        doctor.filepath.trim()
-      );
-      if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
-      }
+    var folderPath = path.resolve(__dirname, "../../uploads", doctor.uuid);
+    if (process.env.IS_PRODUCTION === "true") {
+      folderPath = path.resolve(__dirname, "/uploads", doctor.uuid);
+    }
+
+    // Delete the entire UUID folder if it exists
+    if (fs.existsSync(folderPath)) {
+      fs.rmSync(folderPath, { recursive: true, force: true });
+      console.log("Deleted folder and contents:", folderPath);
     }
 
     await prisma.doctor.delete({
@@ -368,17 +367,16 @@ const DeleteDoctorVideo = async (req, res) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    // If a file path exists, delete the file
-    if (doctor.filepath) {
-      const filepath = path.resolve(
-        __dirname,
-        "/uploads",
-        doctor.filepath.trim()
-      );
-      console.log("Deleting file:", filepath);
-      if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
-      }
+    var folderPath = path.resolve(__dirname, "../../uploads", uuid);
+
+    if (process.env.IS_PRODUCTION === "true") {
+      folderPath = path.resolve(__dirname, "/uploads", uuid);
+    }
+
+    // Delete the entire UUID folder if it exists
+    if (fs.existsSync(folderPath)) {
+      fs.rmSync(folderPath, { recursive: true, force: true });
+      console.log("Deleted folder and contents:", folderPath);
     }
 
     // Clear the file path and uploadedAt timestamp
@@ -413,10 +411,11 @@ const testData = async (req, res) => {
     fs.writeFileSync(readmePath, content, "utf8");
     res.status(200).json({ message: "readme.txt created successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Failed to create readme.txt", details: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to create readme.txt", details: error.message });
   }
-}
-
+};
 
 const uploadDoctorVideo = async (req, res) => {
   try {
@@ -427,16 +426,25 @@ const uploadDoctorVideo = async (req, res) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    const uploadedFilePath = path.resolve(
+    var uploadedFilePath = path.resolve(
       __dirname,
-      "/uploads",
+      "../../uploads",
+      uuid,
       req.file.filename
     );
 
-    // Simply store the filename (do NOT validate or re-encode here)
+    if (process.env.IS_PRODUCTION === "true") {
+      uploadedFilePath = path.resolve(
+        __dirname,
+        "/uploads",
+        uuid,
+        req.file.filename
+      );
+    }
+
     const updatedFiles = doctor.files
-      ? [...doctor.files, req.file.filename]
-      : [req.file.filename];
+      ? [...doctor.files, uploadedFilePath]
+      : [uploadedFilePath];
 
     await prisma.doctor.update({
       where: { uuid },
@@ -453,7 +461,6 @@ const uploadDoctorVideo = async (req, res) => {
   }
 };
 
-
 const finishDoctorVideo = async (req, res) => {
   try {
     const { uuid } = req.params;
@@ -465,13 +472,44 @@ const finishDoctorVideo = async (req, res) => {
         .status(404)
         .json({ message: "No video chunks found for merging" });
     }
+    var chunksDir = path.resolve(__dirname, "../../uploads", uuid);
 
-    const chunksDir = path.resolve(__dirname, "/uploads");
+    if (process.env.IS_PRODUCTION === "true") {
+      chunksDir = path.resolve(__dirname, "/uploads", uuid);
+    }
+
     const fileListPath = path.resolve(chunksDir, `${uuid}-file-list.txt`);
-    // We no longer need mergedWebmPath
-    // const mergedWebmPath = path.resolve(chunksDir, `${uuid}-merged.webm`);
+
     const mergedMp4Path = path.resolve(chunksDir, `${uuid}-merged.mp4`);
-    const finalMp4Path = path.resolve(chunksDir, `${uuid}-final.mp4`);
+    // Create Filename start
+    const formatDateTime = () => {
+      const now = new Date();
+      const pad = (n) => (n < 10 ? "0" + n : n);
+      const padMs = (n) => n.toString().padStart(3, "0");
+
+      return (
+        pad(now.getDate()) +
+        "_" +
+        pad(now.getMonth() + 1) +
+        "_" +
+        now.getFullYear() +
+        "_" +
+        pad(now.getHours()) +
+        "_" +
+        pad(now.getMinutes()) +
+        "_" +
+        pad(now.getSeconds()) +
+        "_" +
+        padMs(now.getMilliseconds())
+      );
+    };
+
+    const safeName = (doctor.name || "Unknown").trim().replace(/\s+/g, "_");
+    const finalFilename = `${formatDateTime()}_${safeName}.mp4`;
+    const finalMp4Path = path.resolve(chunksDir, finalFilename);
+
+    // create Filename end
+    // const finalMp4Path = path.resolve(chunksDir, `${uuid}-final.mp4`);
 
     const existingChunks = doctor.files
       .map((file) => path.resolve(chunksDir, path.basename(file))) // Safe filenames
@@ -569,6 +607,126 @@ const finishDoctorVideo = async (req, res) => {
       .json({ message: "Merge failed", details: error.message });
   }
 };
+
+// const finishDoctorVideo = async (req, res) => {
+//   try {
+//     const { uuid } = req.params;
+//     const { orientation = "portrait", frameColor = "orange" } = req.body;
+
+//     const doctor = await prisma.doctor.findUnique({ where: { uuid } });
+//     if (!doctor || !doctor.files || doctor.files.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ message: "No video chunks found for merging" });
+//     }
+
+//     let chunksDir = path.resolve(__dirname, "../../uploads", uuid);
+//     if (process.env.IS_PRODUCTION === "true") {
+//       chunksDir = path.resolve(__dirname, "/uploads", uuid);
+//     }
+
+//     const fileListPath = path.resolve(chunksDir, `${uuid}-file-list.txt`);
+//     const mergedMp4Path = path.resolve(chunksDir, `${uuid}-merged.mp4`);
+
+//     // Create formatted filename
+//     const formatDateTime = () => {
+//       const now = new Date();
+//       const pad = (n) => (n < 10 ? "0" + n : n);
+//       const padMs = (n) => n.toString().padStart(3, "0");
+//       return `${pad(now.getDate())}_${pad(now.getMonth() + 1)}_${now.getFullYear()}_${pad(now.getHours())}_${pad(now.getMinutes())}_${pad(now.getSeconds())}_${padMs(now.getMilliseconds())}`;
+//     };
+
+//     const safeName = (doctor.name || "Unknown").trim().replace(/\s+/g, "_");
+//     const finalFilename = `${formatDateTime()}_${safeName}.mp4`;
+//     const finalMp4Path = path.resolve(chunksDir, finalFilename);
+
+//     const existingChunks = doctor.files
+//       .map((file) => path.resolve(chunksDir, path.basename(file)))
+//       .filter((filePath) => fs.existsSync(filePath));
+
+//     if (existingChunks.length === 0) {
+//       return res
+//         .status(404)
+//         .json({ message: "No valid chunks found on disk to merge" });
+//     }
+
+//     existingChunks.sort();
+
+//     fs.writeFileSync(
+//       fileListPath,
+//       existingChunks.map((file) => `file '${file}'`).join("\n")
+//     );
+
+//     await new Promise((resolve, reject) => {
+//       const mergeCommand = `ffmpeg -f concat -safe 0 -i "${fileListPath}" -c:v libx264 -preset fast -crf 23 -c:a aac "${mergedMp4Path}"`;
+//       exec(mergeCommand, (err) => {
+//         if (err) reject(new Error(`Merge failed: ${err.message}`));
+//         else resolve();
+//       });
+//     });
+
+//     // Overlay setup
+//     const nameText = `Dr. ${doctor?.name || "Unknown"}, ${doctor?.degree || "Unknown"}`;
+//     const topicText = `Topic: ${doctor?.topic || "Unknown"}`;
+//     const escape = (text) => text.replace(/'/g, "\\'").replace(/:/g, "\\:").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+
+//     const isPortrait = orientation === "portrait";
+//     const videoWidth = isPortrait ? 720 : 1280;
+//     const videoHeight = isPortrait ? 1280 : 720;
+//     const textBoxHeight = isPortrait ? 90 : 60;
+
+//     const topicY = isPortrait ? 55 : 35;
+//     const nameY = topicY + 40;
+
+//     const ffmpegFilter = [
+//       `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
+//       `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
+
+//       // Frame (border) - now thicker and color from frontend
+//       `drawbox=x=0:y=0:w=iw:h=ih:color=${frameColor}@1.0:t=30`,
+
+//       // Background box for text
+//       `drawbox=x=0:y=ih-${textBoxHeight + 25}:w=iw:h=${textBoxHeight + 25}:color=black@0.7:t=fill`,
+
+//       // Doctor Name (larger)
+//       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(nameText)}':fontcolor=white:fontsize=30:x=(w-text_w)/2:y=h-${nameY}:shadowcolor=black:shadowx=2:shadowy=2`,
+
+//       // Topic (can wrap if needed, smaller font)
+//       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(topicText)}':fontcolor=white:fontsize=24:x=(w-text_w)/2:y=h-${topicY}:shadowcolor=black:shadowx=2:shadowy=2`,
+//     ].join(",");
+
+//     await new Promise((resolve, reject) => {
+//       const convertCommand = `ffmpeg -i "${mergedMp4Path}" -vf "${ffmpegFilter}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
+//       exec(convertCommand, (err) => {
+//         if (err) reject(new Error(`Conversion failed: ${err.message}`));
+//         else resolve();
+//       });
+//     });
+
+//     await prisma.doctor.update({
+//       where: { uuid },
+//       data: {
+//         filepath: path.basename(finalMp4Path),
+//         files: [],
+//         uploadedAt: new Date(),
+//       },
+//     });
+
+//     fs.unlinkSync(fileListPath);
+//     fs.unlinkSync(mergedMp4Path);
+//     existingChunks.forEach((file) => fs.existsSync(file) && fs.unlinkSync(file));
+
+//     return res.json({
+//       message: `Video merged and converted successfully (${orientation})`,
+//       file: path.basename(finalMp4Path),
+//     });
+//   } catch (error) {
+//     console.error("Finish error:", error);
+//     return res
+//       .status(500)
+//       .json({ message: "Merge failed", details: error.message });
+//   }
+// };
 
 module.exports = {
   getDoctors,

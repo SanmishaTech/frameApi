@@ -1,20 +1,29 @@
-const multer = require("multer");
+const fs = require("fs");
 const path = require("path");
+const multer = require("multer");
 
-// ✅ Allowed video MIME types
 const allowedMimeTypes = [
   "video/webm",
   "video/mp4",
   "video/ogg",
-  "video/x-matroska", // mkv
-  "video/quicktime", // mov
-  "video/avi", // avi
+  "video/x-matroska",
+  "video/quicktime",
+  "video/avi",
 ];
 
-// ✅ Storage configuration
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "/uploads"); // Ensure this folder exists
+    const uuid = req.params.uuid;
+    var uploadPath = path.join(__dirname, "../../uploads", uuid);
+    if (process.env.IS_PRODUCTION === "true") {
+      uploadPath = `/uploads/${uuid}`;
+    }
+    // Target folder: /uploads/<uuid>
+
+    // Ensure the directory exists
+    fs.mkdirSync(uploadPath, { recursive: true });
+
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -25,7 +34,6 @@ const storage = multer.diskStorage({
   },
 });
 
-// ✅ File filter to check MIME type
 const fileFilter = (req, file, cb) => {
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
@@ -34,7 +42,6 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// ✅ Multer config with limits and filter
 const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
