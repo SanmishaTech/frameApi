@@ -480,7 +480,7 @@ const finishDoctorVideo = async (req, res) => {
     const nameText = `${doctor?.name || "Unknown"}, ${
       doctor?.degree || "Unknown"
     }`;
-    const topicText = `Topic: ${doctor?.topic || "Unknown"}`;
+    const topicText = `${doctor?.topic || "Unknown"}`;
     const escape = (text) =>
       text.replace(/'/g, "\\'").replace(/:/g, "\\:").replace(/,/g, "\\,");
 
