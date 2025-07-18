@@ -477,7 +477,7 @@ const finishDoctorVideo = async (req, res) => {
     });
 
     // Prepare text overlay
-    const nameText = `Dr. ${doctor?.name || "Unknown"}, ${
+    const nameText = `${doctor?.name || "Unknown"}, ${
       doctor?.degree || "Unknown"
     }`;
     const topicText = `Topic: ${doctor?.topic || "Unknown"}`;
