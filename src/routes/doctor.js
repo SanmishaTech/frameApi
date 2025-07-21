@@ -14,7 +14,8 @@ const {
   uploadDoctorVideo,
   DeleteDoctorVideo,
   finishDoctorVideo,
-  testData
+  cleanupDoctorVideos,
+  testData,
 } = require("../controllers/doctorController");
 const auth = require("../middleware/auth");
 const acl = require("../middleware/acl");
@@ -248,7 +249,7 @@ router.post("/record/:uuid", handleMulterErrors, uploadDoctorVideo);
 
 /**
  * @swagger
- * /api/doctors/video/{uuid}/delete:
+ * /api/doctors/record/{uuid}/delete:
  *   delete:
  *     summary: Delete all uploaded video chunks for a doctor
  *     tags: [Doctors]
@@ -266,6 +267,27 @@ router.post("/record/:uuid", handleMulterErrors, uploadDoctorVideo);
  *         description: Failed to delete video
  */
 router.delete("/record/:uuid/delete", DeleteDoctorVideo);
+
+/**
+ * @swagger
+ * /api/doctors/record/{uuid}/cleanup:
+ *   delete:
+ *     summary: Delete all uploaded video chunks for a doctor
+ *     tags: [Doctors]
+ *     parameters:
+ *       - in: path
+ *         name: uuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: UUID of the doctor
+ *     responses:
+ *       200:
+ *         description: Video deleted successfully
+ *       500:
+ *         description: Failed to delete video
+ */
+router.delete("/record/:uuid/cleanup", cleanupDoctorVideos);
 
 /**
  * @swagger
