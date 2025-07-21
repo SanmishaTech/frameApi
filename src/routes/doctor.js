@@ -266,7 +266,7 @@ router.post("/record/:uuid", handleMulterErrors, uploadDoctorVideo);
  *       500:
  *         description: Failed to delete video
  */
-router.delete("/record/:uuid/delete", DeleteDoctorVideo);
+router.delete("/record/:id/:filenameToDelete/delete", DeleteDoctorVideo);
 
 /**
  * @swagger
