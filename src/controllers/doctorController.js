@@ -646,167 +646,6 @@ function wrapText(text, maxLen = 30) {
 //   }
 // };
 
-// const finishDoctorVideo = async (req, res) => {
-//   const { uuid } = req.params;
-//   const { orientation = "portrait", frameColor = "#c0fbfd" } = req.body;
-
-//   try {
-//     const doctor = await prisma.doctor.findUnique({ where: { uuid } });
-//     if (!doctor || !doctor.tempFiles || doctor.tempFiles.length === 0) {
-//       await cleanupDoctorFolder(uuid);
-//       return res
-//         .status(404)
-//         .json({ message: "No video chunks found for merging" });
-//     }
-
-//     let chunksDir = path.resolve(__dirname, "../../uploads", uuid, "temp");
-//     if (process.env.IS_PRODUCTION === "true") {
-//       chunksDir = path.resolve(__dirname, "/uploads", uuid, "temp");
-//     }
-
-//     const fileListPath = path.resolve(chunksDir, `${uuid}-file-list.txt`);
-//     const mergedMp4Path = path.resolve(chunksDir, `${uuid}-merged.mp4`);
-
-//     const existingChunks = doctor.tempFiles
-//       .map((file) => path.resolve(chunksDir, path.basename(file)))
-//       .filter((filePath) => fs.existsSync(filePath));
-
-//     if (existingChunks.length === 0) {
-//       await cleanupDoctorFolder(uuid);
-//       return res
-//         .status(404)
-//         .json({ message: "No valid chunks found on disk to merge" });
-//     }
-
-//     existingChunks.sort();
-//     fs.writeFileSync(
-//       fileListPath,
-//       existingChunks.map((file) => `file '${file}'`).join("\n")
-//     );
-
-//     // Step 1: Merge chunks
-//     await new Promise((resolve, reject) => {
-//       const mergeCommand = `ffmpeg -f concat -safe 0 -i "${fileListPath}" -c:v libx264 -preset fast -crf 23 -c:a aac "${mergedMp4Path}"`;
-//       exec(mergeCommand, (err) => (err ? reject(err) : resolve()));
-//     });
-
-//     // Step 2: Detect rotation metadata
-//     const getRotation = () =>
-//       new Promise((resolve) => {
-//         exec(
-//           `ffprobe -v error -select_streams v:0 -show_entries stream_tags=rotate -of default=nw=1:nk=1 "${mergedMp4Path}"`,
-//           (err, stdout) => {
-//             const angle = parseInt(stdout) || 0;
-//             resolve(angle);
-//           }
-//         );
-//       });
-
-//     const rotation = await getRotation();
-
-//     // Step 3: Setup dimensions and filters
-//     const isPortrait = orientation === "portrait";
-//     const videoWidth = isPortrait ? 720 : 1280;
-//     const videoHeight = isPortrait ? 1280 : 720;
-//     const textBoxHeight = isPortrait ? 90 : 60;
-
-//     const rotationFilter =
-//       rotation === 90 || (isPortrait && rotation === 0)
-//         ? "transpose=1,"
-//         : rotation === 270
-//         ? "transpose=2,"
-//         : "";
-
-//     const nameText = wrapText(`${doctor?.name || "Unknown"}`, 30);
-//     const topicText = `${doctor?.topic || "Unknown"}`;
-//     const escape = (text) =>
-//       text
-//         .replace(/'/g, "\\'")
-//         .replace(/:/g, "\\:")
-//         .replace(/,/g, "\\,")
-//         .replace(/\n/g, "\\n");
-
-//     const ffmpegFilter = [
-//       `${rotationFilter}scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
-//       `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
-//       `drawbox=x=0:y=ih-${textBoxHeight + 80}:w=iw:h=${
-//         textBoxHeight + 80
-//       }:color=${frameColor}@1.0:t=fill`,
-//       `drawbox=x=0:y=0:w=iw:h=ih:color=${frameColor}@1.0:t=30`,
-//       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
-//         nameText
-//       )}':fontcolor=black:fontsize=28:x=(w-text_w)/2:y=h-${
-//         textBoxHeight + 55
-//       }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
-//       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
-//         topicText
-//       )}':fontcolor=black:fontsize=24:x=(w-text_w)/2:y=h-${
-//         textBoxHeight + 20
-//       }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
-//     ].join(",");
-
-//     // Step 4: Convert with FFmpeg
-//     const formatDateTime = () => {
-//       const now = new Date();
-//       const pad = (n) => (n < 10 ? "0" + n : n);
-//       const padMs = (n) => n.toString().padStart(3, "0");
-//       return `${pad(now.getDate())}_${pad(
-//         now.getMonth() + 1
-//       )}_${now.getFullYear()}_${pad(now.getHours())}_${pad(
-//         now.getMinutes()
-//       )}_${pad(now.getSeconds())}_${padMs(now.getMilliseconds())}`;
-//     };
-
-//     const safeName = (doctor.name || "Unknown").trim().replace(/\s+/g, "_");
-//     const finalFilename = `${formatDateTime()}_${safeName}.mp4`;
-
-//     let finalOutputDir = path.resolve(__dirname, "../../uploads", uuid);
-//     if (process.env.IS_PRODUCTION === "true") {
-//       finalOutputDir = path.resolve(__dirname, "/uploads", uuid);
-//     }
-//     const finalMp4Path = path.resolve(finalOutputDir, finalFilename);
-
-//     await new Promise((resolve, reject) => {
-//       const convertCommand = `ffmpeg -i "${mergedMp4Path}" -vf "${ffmpegFilter}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
-//       exec(convertCommand, (err) => (err ? reject(err) : resolve()));
-//     });
-
-//     // Step 5: Save to DB and cleanup
-//     const updatedFiles = doctor.filepath
-//       ? [...doctor.filepath, path.basename(finalMp4Path)]
-//       : [path.basename(finalMp4Path)];
-
-//     await prisma.doctor.update({
-//       where: { uuid },
-//       data: {
-//         filepath: updatedFiles,
-//         tempFiles: [],
-//         isVideoProcessing: false,
-//         uploadedAt: new Date(),
-//       },
-//     });
-
-//     await cleanupDoctorFolder(uuid);
-
-//     return res.json({
-//       message: `Video merged and converted successfully (${orientation})`,
-//       file: path.basename(finalMp4Path),
-//     });
-//   } catch (error) {
-//     console.error("❌ Finish error:", error.message);
-
-//     try {
-//       await cleanupDoctorFolder(uuid);
-//     } catch (cleanupErr) {
-//       console.error("❌ Cleanup failed:", cleanupErr.message);
-//     }
-
-//     return res.status(500).json({
-//       message: "Merge failed",
-//       details: error.message,
-//     });
-//   }
-// };
 const finishDoctorVideo = async (req, res) => {
   const { uuid } = req.params;
   const { orientation = "portrait", frameColor = "#c0fbfd" } = req.body;
@@ -851,11 +690,32 @@ const finishDoctorVideo = async (req, res) => {
       exec(mergeCommand, (err) => (err ? reject(err) : resolve()));
     });
 
-    // Step 2: Setup dimensions and filters
+    // Step 2: Detect rotation metadata
+    const getRotation = () =>
+      new Promise((resolve) => {
+        exec(
+          `ffprobe -v error -select_streams v:0 -show_entries stream_tags=rotate -of default=nw=1:nk=1 "${mergedMp4Path}"`,
+          (err, stdout) => {
+            const angle = parseInt(stdout) || 0;
+            resolve(angle);
+          }
+        );
+      });
+
+    const rotation = await getRotation();
+
+    // Step 3: Setup dimensions and filters
     const isPortrait = orientation === "portrait";
     const videoWidth = isPortrait ? 720 : 1280;
     const videoHeight = isPortrait ? 1280 : 720;
     const textBoxHeight = isPortrait ? 90 : 60;
+
+    const rotationFilter =
+      rotation === 90 || (isPortrait && rotation === 0)
+        ? "transpose=1,"
+        : rotation === 270
+        ? "transpose=2,"
+        : "";
 
     const nameText = wrapText(`${doctor?.name || "Unknown"}`, 30);
     const topicText = `${doctor?.topic || "Unknown"}`;
@@ -867,7 +727,7 @@ const finishDoctorVideo = async (req, res) => {
         .replace(/\n/g, "\\n");
 
     const ffmpegFilter = [
-      `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
+      `${rotationFilter}scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
       `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
       `drawbox=x=0:y=ih-${textBoxHeight + 80}:w=iw:h=${
         textBoxHeight + 80
@@ -885,7 +745,7 @@ const finishDoctorVideo = async (req, res) => {
       }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
     ].join(",");
 
-    // Step 3: Convert with FFmpeg
+    // Step 4: Convert with FFmpeg
     const formatDateTime = () => {
       const now = new Date();
       const pad = (n) => (n < 10 ? "0" + n : n);
@@ -911,7 +771,7 @@ const finishDoctorVideo = async (req, res) => {
       exec(convertCommand, (err) => (err ? reject(err) : resolve()));
     });
 
-    // Step 4: Save to DB and cleanup
+    // Step 5: Save to DB and cleanup
     const updatedFiles = doctor.filepath
       ? [...doctor.filepath, path.basename(finalMp4Path)]
       : [path.basename(finalMp4Path)];
