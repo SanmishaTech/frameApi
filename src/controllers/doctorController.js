@@ -388,10 +388,6 @@ const uploadDoctorVideo = async (req, res) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    if (doctor.isVideoProcessing) {
-      return res.status(500).json({ message: "Doctor Video is Processing" });
-    }
-
     var uploadedFilePath = path.resolve(
       __dirname,
       "../../uploads",
