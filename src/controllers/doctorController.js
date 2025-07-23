@@ -546,32 +546,59 @@ const finishDoctorVideo = async (req, res) => {
     const topicY = isPortrait ? 55 : 35;
     const nameY = topicY + 40;
 
+    // const ffmpegFilter = [
+    //   `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
+    //   `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
+
+    //   // ✅ Frame color used as text background
+    //   `drawbox=x=0:y=ih-${textBoxHeight + 80}:w=iw:h=${
+    //     textBoxHeight + 80
+    //   }:color=${frameColor}@1.0:t=fill`,
+
+    //   `drawbox=x=0:y=0:w=iw:h=ih:color=${frameColor}@1.0:t=30`,
+
+    //   `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf: \
+    //     text='${escape(nameText)}': \
+    //     fontcolor=black:fontsize=28: \
+    //     x=(w-text_w)/2: \
+    //     y=h-${textBoxHeight + 55}: \
+    //     box=0: \
+    //     shadowcolor=black:shadowx=2:shadowy=2`,
+
+    //   `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf: \
+    //     text='${escape(topicText)}': \
+    //     fontcolor=black:fontsize=24: \
+    //     x=(w-text_w)/2: \
+    //     y=h-${textBoxHeight + 20}: \
+    //     box=0: \
+    //     shadowcolor=black:shadowx=2:shadowy=2`,
+    // ].join(",");
+    // 🔄 Add rotation only for portrait
+    const rotationFilter = isPortrait ? "transpose=1," : "";
+
     const ffmpegFilter = [
-      `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
+      rotationFilter +
+        `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
       `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
 
-      // ✅ Frame color used as text background
       `drawbox=x=0:y=ih-${textBoxHeight + 80}:w=iw:h=${
         textBoxHeight + 80
       }:color=${frameColor}@1.0:t=fill`,
-
       `drawbox=x=0:y=0:w=iw:h=ih:color=${frameColor}@1.0:t=30`,
 
       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf: \
-        text='${escape(nameText)}': \
-        fontcolor=black:fontsize=28: \
-        x=(w-text_w)/2: \
-        y=h-${textBoxHeight + 55}: \
-        box=0: \
-        shadowcolor=black:shadowx=2:shadowy=2`,
+           text='${escape(nameText)}': \
+           fontcolor=black:fontsize=28: \
+           x=(w-text_w)/2: \
+           y=h-${textBoxHeight + 55}: \
+           box=0:shadowcolor=black:shadowx=2:shadowy=2`,
 
       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf: \
-        text='${escape(topicText)}': \
-        fontcolor=black:fontsize=24: \
-        x=(w-text_w)/2: \
-        y=h-${textBoxHeight + 20}: \
-        box=0: \
-        shadowcolor=black:shadowx=2:shadowy=2`,
+           text='${escape(topicText)}': \
+           fontcolor=black:fontsize=24: \
+           x=(w-text_w)/2: \
+           y=h-${textBoxHeight + 20}: \
+           box=0:shadowcolor=black:shadowx=2:shadowy=2`,
     ].join(",");
 
     await new Promise((resolve, reject) => {
