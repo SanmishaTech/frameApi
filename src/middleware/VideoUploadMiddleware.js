@@ -14,6 +14,7 @@ const allowedMimeTypes = [
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uuid = req.params.uuid;
+
     var uploadPath = path.join(__dirname, "../../uploads", uuid, "temp");
     if (process.env.IS_PRODUCTION === "true") {
       uploadPath = `/uploads/${uuid}/temp`;

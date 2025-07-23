@@ -388,6 +388,10 @@ const uploadDoctorVideo = async (req, res) => {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
+    if (doctor.isVideoProcessing) {
+      return res.status(500).json({ message: "Doctor Video is Processing" });
+    }
+
     var uploadedFilePath = path.resolve(
       __dirname,
       "../../uploads",
@@ -412,7 +416,7 @@ const uploadDoctorVideo = async (req, res) => {
 
     await prisma.doctor.update({
       where: { uuid },
-      data: { tempFiles: updatedFiles },
+      data: { tempFiles: updatedFiles, isVideoProcessing: true },
     });
 
     res.json({
@@ -588,7 +592,12 @@ const finishDoctorVideo = async (req, res) => {
 
     await prisma.doctor.update({
       where: { uuid },
-      data: { filepath: updatedFiles, tempFiles: [], uploadedAt: new Date() },
+      data: {
+        filepath: updatedFiles,
+        tempFiles: [],
+        isVideoProcessing: false,
+        uploadedAt: new Date(),
+      },
     });
 
     await cleanupDoctorFolder(uuid);
