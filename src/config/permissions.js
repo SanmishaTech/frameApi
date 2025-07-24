@@ -9,6 +9,8 @@ module.exports = {
   "doctors.write": ["admin", "user"],
   "doctors.delete": ["admin", "user"],
   "doctors.export": ["admin", "user"],
+  //dashboards
+  "dashboard.read": ["admin", "user"],
   //roles
   "roles.read": ["super_admin", "admin", "branch_admin", "user"],
 };

@@ -78,11 +78,22 @@ const createDoctor = async (req, res) => {
     designation: z.string().optional(),
     specialty: z.string().min(1, "Specialty cannot be left blank."),
     topic: z.string().min(1, "Topic cannot be left blank."),
+    state: z.string().optional(),
+    city: z.string().optional(),
   });
   const validationErrors = await validateRequest(schema, req.body, res);
 
-  const { name, mobile, email, degree, designation, specialty, topic } =
-    req.body;
+  const {
+    name,
+    mobile,
+    email,
+    degree,
+    designation,
+    specialty,
+    topic,
+    state,
+    city,
+  } = req.body;
 
   try {
     const newDoctor = await prisma.doctor.create({
@@ -95,6 +106,8 @@ const createDoctor = async (req, res) => {
         designation,
         specialty,
         topic,
+        state,
+        city,
       },
     });
 
@@ -147,12 +160,23 @@ const updateDoctor = async (req, res) => {
     designation: z.string().optional(),
     specialty: z.string().min(1, "Specialty cannot be left blank."),
     topic: z.string().min(1, "Topic cannot be left blank."),
+    state: z.string().optional(),
+    city: z.string().optional(),
   });
   const validationErrors = await validateRequest(schema, req.body, res);
 
   const { id } = req.params;
-  const { name, mobile, email, degree, designation, specialty, topic } =
-    req.body;
+  const {
+    name,
+    mobile,
+    email,
+    degree,
+    designation,
+    specialty,
+    topic,
+    state,
+    city,
+  } = req.body;
 
   try {
     const doctor = await prisma.doctor.findUnique({
@@ -175,6 +199,8 @@ const updateDoctor = async (req, res) => {
         designation,
         specialty,
         topic,
+        state,
+        city,
       },
     });
 

@@ -34,6 +34,8 @@ model Doctor {
   designation  String?  // Optional
   specialty   String
   topic        String @db.Text
+  state        String?
+  city         String?
   tempFiles     Json?    // Array of file names
   filepath     Json?  // This ensures it becomes a TEXT column
   isVideoProcessing  Boolean   @default(false)
