@@ -11,6 +11,8 @@ module.exports = {
   "doctors.export": ["admin", "user"],
   //dashboards
   "dashboard.read": ["admin", "user"],
+  //reports
+  "reports.read": ["admin", "user"],
   //roles
   "roles.read": ["super_admin", "admin", "branch_admin", "user"],
 };
