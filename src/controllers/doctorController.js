@@ -476,10 +476,10 @@ function wrapText(text, maxLen = 30) {
 }
 
 // const finishDoctorVideo = async (req, res) => {
-//   try {
-//     const { uuid } = req.params;
-//     const { orientation = "portrait", frameColor = "#c0fbfd" } = req.body;
+//   const { uuid } = req.params;
+//   const { orientation = "portrait", frameColor = "#c0fbfd" } = req.body;
 
+//   try {
 //     const doctor = await prisma.doctor.findUnique({ where: { uuid } });
 //     if (!doctor || !doctor.tempFiles || doctor.tempFiles.length === 0) {
 //       await cleanupDoctorFolder(uuid);
@@ -488,44 +488,13 @@ function wrapText(text, maxLen = 30) {
 //         .json({ message: "No video chunks found for merging" });
 //     }
 
-//     var chunksDir = path.resolve(__dirname, "../../uploads", uuid, "temp");
+//     let chunksDir = path.resolve(__dirname, "../../uploads", uuid, "temp");
 //     if (process.env.IS_PRODUCTION === "true") {
 //       chunksDir = path.resolve(__dirname, "/uploads", uuid, "temp");
 //     }
-//     console.log("Chunks directory:", chunksDir);
 
 //     const fileListPath = path.resolve(chunksDir, `${uuid}-file-list.txt`);
 //     const mergedMp4Path = path.resolve(chunksDir, `${uuid}-merged.mp4`);
-
-//     const formatDateTime = () => {
-//       const now = new Date();
-//       const pad = (n) => (n < 10 ? "0" + n : n);
-//       const padMs = (n) => n.toString().padStart(3, "0");
-
-//       return (
-//         pad(now.getDate()) +
-//         "_" +
-//         pad(now.getMonth() + 1) +
-//         "_" +
-//         now.getFullYear() +
-//         "_" +
-//         pad(now.getHours()) +
-//         "_" +
-//         pad(now.getMinutes()) +
-//         "_" +
-//         pad(now.getSeconds()) +
-//         "_" +
-//         padMs(now.getMilliseconds())
-//       );
-//     };
-
-//     const safeName = (doctor.name || "Unknown").trim().replace(/\s+/g, "_");
-//     const finalFilename = `${formatDateTime()}_${safeName}.mp4`;
-//     var finalOutputDir = path.resolve(__dirname, "../../uploads", uuid);
-//     if (process.env.IS_PRODUCTION === "true") {
-//       finalOutputDir = path.resolve(__dirname, "/uploads", uuid);
-//     }
-//     const finalMp4Path = path.resolve(finalOutputDir, finalFilename);
 
 //     const existingChunks = doctor.tempFiles
 //       .map((file) => path.resolve(chunksDir, path.basename(file)))
@@ -539,102 +508,99 @@ function wrapText(text, maxLen = 30) {
 //     }
 
 //     existingChunks.sort();
-
 //     fs.writeFileSync(
 //       fileListPath,
 //       existingChunks.map((file) => `file '${file}'`).join("\n")
 //     );
 
+//     // Step 1: Merge chunks
 //     await new Promise((resolve, reject) => {
 //       const mergeCommand = `ffmpeg -f concat -safe 0 -i "${fileListPath}" -c:v libx264 -preset fast -crf 23 -c:a aac "${mergedMp4Path}"`;
-//       exec(mergeCommand, (err) => {
-//         if (err) reject(new Error(`Merge failed: ${err.message}`));
-//         else resolve();
-//       });
+//       exec(mergeCommand, (err) => (err ? reject(err) : resolve()));
 //     });
 
-//     const nameText = wrapText(`${doctor?.name || "Unknown"}`, 30);
+//     // Step 2: Detect rotation metadata
+//     const getRotation = () =>
+//       new Promise((resolve) => {
+//         exec(
+//           `ffprobe -v error -select_streams v:0 -show_entries stream_tags=rotate -of default=nw=1:nk=1 "${mergedMp4Path}"`,
+//           (err, stdout) => {
+//             const angle = parseInt(stdout) || 0;
+//             resolve(angle);
+//           }
+//         );
+//       });
 
-//     const topicText = `${doctor?.topic || "Unknown"}`;
+//     const rotation = await getRotation();
 
-//     const escape = (text) =>
-//       text
-//         .replace(/'/g, "\\'")
-//         .replace(/:/g, "\\:")
-//         .replace(/,/g, "\\,")
-//         .replace(/\n/g, "\\n"); // enable manual multiline if needed
-
+//     // Step 3: Setup dimensions and filters
 //     const isPortrait = orientation === "portrait";
 //     const videoWidth = isPortrait ? 720 : 1280;
 //     const videoHeight = isPortrait ? 1280 : 720;
 //     const textBoxHeight = isPortrait ? 90 : 60;
 
-//     const topicY = isPortrait ? 55 : 35;
-//     const nameY = topicY + 40;
+//     const rotationFilter =
+//       rotation === 90 || (isPortrait && rotation === 0)
+//         ? "transpose=1,"
+//         : rotation === 270
+//         ? "transpose=2,"
+//         : "";
 
-//     // const ffmpegFilter = [
-//     //   `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
-//     //   `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
-
-//     //   // ✅ Frame color used as text background
-//     //   `drawbox=x=0:y=ih-${textBoxHeight + 80}:w=iw:h=${
-//     //     textBoxHeight + 80
-//     //   }:color=${frameColor}@1.0:t=fill`,
-
-//     //   `drawbox=x=0:y=0:w=iw:h=ih:color=${frameColor}@1.0:t=30`,
-
-//     //   `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf: \
-//     //     text='${escape(nameText)}': \
-//     //     fontcolor=black:fontsize=28: \
-//     //     x=(w-text_w)/2: \
-//     //     y=h-${textBoxHeight + 55}: \
-//     //     box=0: \
-//     //     shadowcolor=black:shadowx=2:shadowy=2`,
-
-//     //   `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf: \
-//     //     text='${escape(topicText)}': \
-//     //     fontcolor=black:fontsize=24: \
-//     //     x=(w-text_w)/2: \
-//     //     y=h-${textBoxHeight + 20}: \
-//     //     box=0: \
-//     //     shadowcolor=black:shadowx=2:shadowy=2`,
-//     // ].join(",");
-//     // 🔄 Add rotation only for portrait
-//     const rotationFilter = isPortrait ? "transpose=1," : "";
+//     const nameText = wrapText(`${doctor?.name || "Unknown"}`, 30);
+//     const topicText = `${doctor?.topic || "Unknown"}`;
+//     const escape = (text) =>
+//       text
+//         .replace(/'/g, "\\'")
+//         .replace(/:/g, "\\:")
+//         .replace(/,/g, "\\,")
+//         .replace(/\n/g, "\\n");
 
 //     const ffmpegFilter = [
-//       rotationFilter +
-//         `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
+//       `${rotationFilter}scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
 //       `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
-
 //       `drawbox=x=0:y=ih-${textBoxHeight + 80}:w=iw:h=${
 //         textBoxHeight + 80
 //       }:color=${frameColor}@1.0:t=fill`,
 //       `drawbox=x=0:y=0:w=iw:h=ih:color=${frameColor}@1.0:t=30`,
-
-//       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf: \
-//            text='${escape(nameText)}': \
-//            fontcolor=black:fontsize=28: \
-//            x=(w-text_w)/2: \
-//            y=h-${textBoxHeight + 55}: \
-//            box=0:shadowcolor=black:shadowx=2:shadowy=2`,
-
-//       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf: \
-//            text='${escape(topicText)}': \
-//            fontcolor=black:fontsize=24: \
-//            x=(w-text_w)/2: \
-//            y=h-${textBoxHeight + 20}: \
-//            box=0:shadowcolor=black:shadowx=2:shadowy=2`,
+//       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
+//         nameText
+//       )}':fontcolor=black:fontsize=28:x=(w-text_w)/2:y=h-${
+//         textBoxHeight + 55
+//       }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
+//       `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
+//         topicText
+//       )}':fontcolor=black:fontsize=24:x=(w-text_w)/2:y=h-${
+//         textBoxHeight + 20
+//       }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
 //     ].join(",");
+
+//     // Step 4: Convert with FFmpeg
+//     const formatDateTime = () => {
+//       const now = new Date();
+//       const pad = (n) => (n < 10 ? "0" + n : n);
+//       const padMs = (n) => n.toString().padStart(3, "0");
+//       return `${pad(now.getDate())}_${pad(
+//         now.getMonth() + 1
+//       )}_${now.getFullYear()}_${pad(now.getHours())}_${pad(
+//         now.getMinutes()
+//       )}_${pad(now.getSeconds())}_${padMs(now.getMilliseconds())}`;
+//     };
+
+//     const safeName = (doctor.name || "Unknown").trim().replace(/\s+/g, "_");
+//     const finalFilename = `${formatDateTime()}_${safeName}.mp4`;
+
+//     let finalOutputDir = path.resolve(__dirname, "../../uploads", uuid);
+//     if (process.env.IS_PRODUCTION === "true") {
+//       finalOutputDir = path.resolve(__dirname, "/uploads", uuid);
+//     }
+//     const finalMp4Path = path.resolve(finalOutputDir, finalFilename);
 
 //     await new Promise((resolve, reject) => {
 //       const convertCommand = `ffmpeg -i "${mergedMp4Path}" -vf "${ffmpegFilter}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
-//       exec(convertCommand, (err) => {
-//         if (err) reject(new Error(`Conversion failed: ${err.message}`));
-//         else resolve();
-//       });
+//       exec(convertCommand, (err) => (err ? reject(err) : resolve()));
 //     });
 
+//     // Step 5: Save to DB and cleanup
 //     const updatedFiles = doctor.filepath
 //       ? [...doctor.filepath, path.basename(finalMp4Path)]
 //       : [path.basename(finalMp4Path)];
@@ -658,7 +624,6 @@ function wrapText(text, maxLen = 30) {
 //   } catch (error) {
 //     console.error("❌ Finish error:", error.message);
 
-//     // Cleanup on failure
 //     try {
 //       await cleanupDoctorFolder(uuid);
 //     } catch (cleanupErr) {
@@ -716,62 +681,7 @@ const finishDoctorVideo = async (req, res) => {
       exec(mergeCommand, (err) => (err ? reject(err) : resolve()));
     });
 
-    // Step 2: Detect rotation metadata
-    const getRotation = () =>
-      new Promise((resolve) => {
-        exec(
-          `ffprobe -v error -select_streams v:0 -show_entries stream_tags=rotate -of default=nw=1:nk=1 "${mergedMp4Path}"`,
-          (err, stdout) => {
-            const angle = parseInt(stdout) || 0;
-            resolve(angle);
-          }
-        );
-      });
-
-    const rotation = await getRotation();
-
-    // Step 3: Setup dimensions and filters
-    const isPortrait = orientation === "portrait";
-    const videoWidth = isPortrait ? 720 : 1280;
-    const videoHeight = isPortrait ? 1280 : 720;
-    const textBoxHeight = isPortrait ? 90 : 60;
-
-    const rotationFilter =
-      rotation === 90 || (isPortrait && rotation === 0)
-        ? "transpose=1,"
-        : rotation === 270
-        ? "transpose=2,"
-        : "";
-
-    const nameText = wrapText(`${doctor?.name || "Unknown"}`, 30);
-    const topicText = `${doctor?.topic || "Unknown"}`;
-    const escape = (text) =>
-      text
-        .replace(/'/g, "\\'")
-        .replace(/:/g, "\\:")
-        .replace(/,/g, "\\,")
-        .replace(/\n/g, "\\n");
-
-    const ffmpegFilter = [
-      `${rotationFilter}scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
-      `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
-      `drawbox=x=0:y=ih-${textBoxHeight + 80}:w=iw:h=${
-        textBoxHeight + 80
-      }:color=${frameColor}@1.0:t=fill`,
-      `drawbox=x=0:y=0:w=iw:h=ih:color=${frameColor}@1.0:t=30`,
-      `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
-        nameText
-      )}':fontcolor=black:fontsize=28:x=(w-text_w)/2:y=h-${
-        textBoxHeight + 55
-      }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
-      `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
-        topicText
-      )}':fontcolor=black:fontsize=24:x=(w-text_w)/2:y=h-${
-        textBoxHeight + 20
-      }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
-    ].join(",");
-
-    // Step 4: Convert with FFmpeg
+    // Step 2: Always create a final filename
     const formatDateTime = () => {
       const now = new Date();
       const pad = (n) => (n < 10 ? "0" + n : n);
@@ -790,14 +700,78 @@ const finishDoctorVideo = async (req, res) => {
     if (process.env.IS_PRODUCTION === "true") {
       finalOutputDir = path.resolve(__dirname, "/uploads", uuid);
     }
+
     const finalMp4Path = path.resolve(finalOutputDir, finalFilename);
 
-    await new Promise((resolve, reject) => {
-      const convertCommand = `ffmpeg -i "${mergedMp4Path}" -vf "${ffmpegFilter}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
-      exec(convertCommand, (err) => (err ? reject(err) : resolve()));
-    });
+    // Step 3: Either edit or copy with conversion
+    if (process.env.EDIT_VIDEO === "true") {
+      const getRotation = () =>
+        new Promise((resolve) => {
+          exec(
+            `ffprobe -v error -select_streams v:0 -show_entries stream_tags=rotate -of default=nw=1:nk=1 "${mergedMp4Path}"`,
+            (err, stdout) => {
+              const angle = parseInt(stdout) || 0;
+              resolve(angle);
+            }
+          );
+        });
 
-    // Step 5: Save to DB and cleanup
+      const rotation = await getRotation();
+
+      const isPortrait = orientation === "portrait";
+      const videoWidth = isPortrait ? 720 : 1280;
+      const videoHeight = isPortrait ? 1280 : 720;
+      const textBoxHeight = isPortrait ? 90 : 60;
+
+      const rotationFilter =
+        rotation === 90 || (isPortrait && rotation === 0)
+          ? "transpose=1,"
+          : rotation === 270
+          ? "transpose=2,"
+          : "";
+
+      const nameText = wrapText(`${doctor?.name || "Unknown"}`, 30);
+      const topicText = `${doctor?.topic || "Unknown"}`;
+      const escape = (text) =>
+        text
+          .replace(/'/g, "\\'")
+          .replace(/:/g, "\\:")
+          .replace(/,/g, "\\,")
+          .replace(/\n/g, "\\n");
+
+      const ffmpegFilter = [
+        `${rotationFilter}scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease`,
+        `pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`,
+        `drawbox=x=0:y=ih-${textBoxHeight + 80}:w=iw:h=${
+          textBoxHeight + 80
+        }:color=${frameColor}@1.0:t=fill`,
+        `drawbox=x=0:y=0:w=iw:h=ih:color=${frameColor}@1.0:t=30`,
+        `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
+          nameText
+        )}':fontcolor=black:fontsize=28:x=(w-text_w)/2:y=h-${
+          textBoxHeight + 55
+        }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
+        `drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='${escape(
+          topicText
+        )}':fontcolor=black:fontsize=24:x=(w-text_w)/2:y=h-${
+          textBoxHeight + 20
+        }:box=0:shadowcolor=black:shadowx=2:shadowy=2`,
+      ].join(",");
+
+      // Convert with filters
+      await new Promise((resolve, reject) => {
+        const convertCommand = `ffmpeg -i "${mergedMp4Path}" -vf "${ffmpegFilter}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
+        exec(convertCommand, (err) => (err ? reject(err) : resolve()));
+      });
+    } else {
+      // No filters: just convert and rename
+      await new Promise((resolve, reject) => {
+        const copyCommand = `ffmpeg -i "${mergedMp4Path}" -c:v libx264 -preset fast -crf 23 -c:a aac "${finalMp4Path}"`;
+        exec(copyCommand, (err) => (err ? reject(err) : resolve()));
+      });
+    }
+
+    // Step 4: Save to DB
     const updatedFiles = doctor.filepath
       ? [...doctor.filepath, path.basename(finalMp4Path)]
       : [path.basename(finalMp4Path)];
@@ -815,18 +789,16 @@ const finishDoctorVideo = async (req, res) => {
     await cleanupDoctorFolder(uuid);
 
     return res.json({
-      message: `Video merged and converted successfully (${orientation})`,
+      message: `Video processed successfully (${orientation})`,
       file: path.basename(finalMp4Path),
     });
   } catch (error) {
     console.error("❌ Finish error:", error.message);
-
     try {
       await cleanupDoctorFolder(uuid);
     } catch (cleanupErr) {
       console.error("❌ Cleanup failed:", cleanupErr.message);
     }
-
     return res.status(500).json({
       message: "Merge failed",
       details: error.message,
