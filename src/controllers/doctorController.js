@@ -788,9 +788,23 @@ const finishDoctorVideo = async (req, res) => {
 
     await cleanupDoctorFolder(uuid);
 
+    const recordAgainLink = `${config.frontendUrl}/doctors/record/${doctor.uuid}`;
+    const videoLink = `${config.backendStaticUrl}/uploads/${uuid}/${finalFilename}`;
+    // Send the email
+    await sendEmail(
+      doctor.email,
+      "Video uploaded successfully",
+      "videoProcessedEmail", // template name, must match templates/doctor-info.ejs
+      {
+        name: doctor.name,
+        topic: doctor.topic,
+        recordAgainLink: recordAgainLink,
+        videoLink: videoLink,
+      }
+    );
+
     return res.json({
-      message: `Video processed successfully (${orientation})`,
-      file: path.basename(finalMp4Path),
+      message: `Video processed successfully.`,
     });
   } catch (error) {
     console.error("❌ Finish error:", error.message);
