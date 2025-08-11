@@ -68,10 +68,7 @@ const createDoctor = async (req, res) => {
     name: z
       .string()
       .min(1, "Name cannot be left blank.")
-      .max(100, "Name must not exceed 100 characters.")
-      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-        message: "Name can only contain letters.",
-      }),
+      .max(100, "Name must not exceed 100 characters."),
     mobile: z.string().min(1, "Mobile cannot be left blank."),
     email: z.string().email("Invalid email format."),
     degree: z.string().min(1, "Degree cannot be left blank."),
@@ -150,10 +147,7 @@ const updateDoctor = async (req, res) => {
     name: z
       .string()
       .min(1, "Name cannot be left blank.")
-      .max(100, "Name must not exceed 100 characters.")
-      .refine((val) => /^[A-Za-z\s\u0900-\u097F]+$/.test(val), {
-        message: "Name can only contain letters.",
-      }),
+      .max(100, "Name must not exceed 100 characters."),
     mobile: z.string().min(1, "Mobile cannot be left blank."),
     email: z.string().email("Invalid email format."),
     degree: z.string().min(1, "Degree cannot be left blank."),
