@@ -402,14 +402,13 @@ const cleanupDoctorVideos = async (req, res) => {
 const uploadDoctorVideo = async (req, res) => {
   try {
     const { uuid } = req.params;
-    const { stop } = req.body;
-    console.log("stop variable is = ", stop);
+
     const doctor = await prisma.doctor.findUnique({ where: { uuid } });
     if (!doctor) {
       return res.status(404).json({ message: "Doctor not found" });
     }
 
-    let uploadedFilePath = path.resolve(
+    var uploadedFilePath = path.resolve(
       __dirname,
       "../../uploads",
       uuid,
@@ -433,22 +432,9 @@ const uploadDoctorVideo = async (req, res) => {
 
     await prisma.doctor.update({
       where: { uuid },
-      data: {
-        tempFiles: updatedFiles,
-        isVideoProcessing: true,
-      },
+      data: { tempFiles: updatedFiles, isVideoProcessing: true },
     });
 
-    // ✅ If `stop = true`, finalize immediately
-    if (stop === "true") {
-      req.body.orientation = req.body.orientation || "portrait";
-      req.body.frameColor = req.body.frameColor || "#c0fbfd";
-
-      await finishDoctorVideo(req, res); // 👈 call directly since in same file
-      return; // prevent double response
-    }
-
-    // 🟢 Respond normally for chunk upload
     res.json({
       message: "Video chunk uploaded successfully",
       file: req.file.filename,
@@ -456,6 +442,7 @@ const uploadDoctorVideo = async (req, res) => {
   } catch (error) {
     console.error("❌ Upload error:", error.message);
 
+    // Perform cleanup on failure
     try {
       await cleanupDoctorFolder(uuid);
     } catch (cleanupErr) {
